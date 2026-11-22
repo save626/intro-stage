@@ -1,0 +1,14 @@
+﻿{
+  "name": "intro-stage",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "开场动画：字符画眼睛 → 瞳孔推进 → WebGL 花瓣/圣诞树粒子界面（手势聚合、场景切换、全屏）",
+  "scripts": {
+    "start": "node serve.mjs",
+    "dev": "node serve.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
