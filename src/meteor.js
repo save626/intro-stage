@@ -1,5 +1,5 @@
 ﻿/**
- * 满屏流星雨（Canvas 2D 版）——完整移植「服务器部署版」（4be7a0f）
+ * 满屏流星雨（Canvas 2D 版）——完整移植「服务器部署版」landing/index.html（4be7a0f）
  * 的 Canvas 星空实现，去掉 "Hello World" SVG 遮罩扫描文案动画。
  *
  * 视觉构成（与线上那版逐参数一致）：
@@ -13,27 +13,53 @@
  */
 
 const CFG = {
-  trailMin: 90, trailMax: 210,      // 星轨数量，按面积自适应
-  arcLen: [0.030, 0.150],           // 星轨弧的角跨度（弧度）
-  omega: [0.0035, 0.0140],          // 公转角速度 rad/s
+  // 2026-11-23：星空照片底图删掉后，星轨不再有银河照片作衬底。
+  // 先按「少而淡」调过一版（52–96 条、亮度上限 0.38），实测太弱、像划痕；
+  // 用户要求「数量更多、亮度更高」，于是把数量抬回接近原值、亮度也抬回来。
+  trailMin: 130, trailMax: 220,     // 星轨数量，按面积自适应
+  arcLen: [0.060, 0.190],           // 星轨弧的角跨度（弧度）
+  omega: [0.0025, 0.0110],          // 公转角速度 rad/s
   growT: [5.0, 16.0],               // 弧长长到满所需秒数
-  // 第十二轮：数量翻倍（20→40）、生成率翻倍、寿命翻倍（0.8–1.6s → 1.6–3.2s）、
-  // 速度降到 0.7 倍 —— 让每颗流星在屏幕上停留更久，画面更密更从容。
   meteorCount: 40,
   meteorSpeed: [300, 620],
   meteorLength: [110, 260],
   meteorAngle: [118, 148],          // 度：向下偏左，与线上版一致
   meteorWidth: [1.2, 2.8],
   meteorHue: [192, 216],            // 冷蓝
-  spawnInterval: 0.065,             // 每秒约 15.4 颗（原 7.7）
+  spawnInterval: 0.065,             // 每秒约 15.4 颗
 }
-const BUCKETS = [0.20, 0.38, 0.60, 0.86]
+const BUCKETS = [0.22, 0.36, 0.52, 0.72]
 const SEGS = [
-  { f0: 0.00, f1: 0.55, a: 0.15, w: 0.75 },
-  { f0: 0.55, f1: 0.85, a: 0.40, w: 1.15 },
-  { f0: 0.85, f1: 1.00, a: 0.92, w: 1.70 },
+  { f0: 0.00, f1: 0.55, a: 0.18, w: 0.70 },
+  { f0: 0.55, f1: 0.85, a: 0.42, w: 1.05 },
+  { f0: 0.85, f1: 1.00, a: 0.85, w: 1.45 },
 ]
 const POLE = { x: 0.5, y: -0.30 }   // 相对坐标，画面正上方外部
+
+/**
+ * 移动端流星参数（2026-11-23 第二次调整）。
+ *
+ * 第一版是等距点阵（5 轨 × 6 颗、同向同速）——用户反馈「太规整」。
+ * 现在回到随机分布，但把随机限制在一条窄带里：方向、长度、间距都随机，
+ * 区间比最早的随机版收窄、数量加密。既不"随机闪一下"，也不像网格。
+ *
+ * 竖屏专用的两个偏移：
+ *   · 角度更偏竖直（104–128°）：桌面 118–148° 的斜线在手机上走不到屏底就出界，
+ *     屏幕上只剩右上角在下雨；
+ *   · 长度按屏宽取（0.20–0.44 × 390 ≈ 78–172px）：绝对像素长度在窄屏上会顶到 2/3 屏宽。
+ */
+const MOBILE = {
+  count: 46,                  // 同屏上限（最早 22，太稀）
+  speed: [250, 360],          // 收窄：不会忽快忽慢，但仍随机
+  angle: [104, 128],
+  lengthRatio: [0.20, 0.44],  // × 屏宽
+  width: [1.0, 2.2],
+  alpha: [0.5, 0.95],
+  life: [2.0, 3.4],
+  spawn: 0.020,               // 约 50 颗/s 的补充抽签 —— 密度靠它顶住
+}
+
+
 
 function rand(a, b) { return a + Math.random() * (b - a) }
 function clamp(v, a, b) { return v < a ? a : (v > b ? b : v) }
@@ -130,7 +156,7 @@ export class MeteorField {
         grow: rand(0.15, 1.0),
         growT: rand(CFG.growT[0], CFG.growT[1]),
         b: bucket,
-        headR: rand(0.5, 1.7),
+        headR: rand(0.35, 0.95),
         phase: rand(0, Math.PI * 2),
         tw: rand(0.5, 1.4),
       })
@@ -140,6 +166,21 @@ export class MeteorField {
   }
 
   _resetMeteor(m, initial) {
+    if (this.mobile) {
+      m.angle = rand(MOBILE.angle[0], MOBILE.angle[1]) * Math.PI / 180
+      m.speed = rand(MOBILE.speed[0], MOBILE.speed[1])
+      m.length = this.W * rand(MOBILE.lengthRatio[0], MOBILE.lengthRatio[1])
+      m.width = rand(MOBILE.width[0], MOBILE.width[1])
+      m.alpha = rand(MOBILE.alpha[0], MOBILE.alpha[1])
+      m.life = rand(MOBILE.life[0], MOBILE.life[1])
+      m.hue = rand(CFG.meteorHue[0], CFG.meteorHue[1])
+      m.x = rand(-this.W * 0.15, this.W * 1.15)
+      // 初次铺开时撒满整屏（否则开场头两秒只有上半屏在下）；之后都从屏上方重新进入
+      m.y = initial ? rand(-this.H * 0.35, this.H * 0.9) : rand(-this.H * 0.4, -20)
+      m.maxLife = m.life
+      m.delay = initial ? rand(0, 1.2) : rand(0, 0.3)
+      return
+    }
     m.angle = rand(CFG.meteorAngle[0], CFG.meteorAngle[1]) * Math.PI / 180
     m.speed = rand(CFG.meteorSpeed[0], CFG.meteorSpeed[1])
     m.length = rand(CFG.meteorLength[0], CFG.meteorLength[1])
@@ -155,7 +196,7 @@ export class MeteorField {
 
   _seed() {
     this.meteors.length = 0
-    const n = this.mobile ? 22 : CFG.meteorCount
+    const n = this.mobile ? MOBILE.count : CFG.meteorCount
     for (let i = 0; i < n; i++) {
       const m = {}
       this._resetMeteor(m, true)
@@ -226,13 +267,17 @@ export class MeteorField {
 
   _drawMeteor(m) {
     if (m.delay > 0 || m.life <= 0) return
-    const { ctx } = this
     const lifeRatio = Math.max(0, m.life / m.maxLife)
-    const alpha = m.alpha * Math.min(1, lifeRatio * 2.2)
-    const tailX = m.x - Math.cos(m.angle) * m.length
-    const tailY = m.y - Math.sin(m.angle) * m.length
+    this._stroke(m, m.x, m.y, m.length, m.alpha * Math.min(1, lifeRatio * 2.2))
+  }
 
-    const grad = ctx.createLinearGradient(m.x, m.y, tailX, tailY)
+  /** 画一条流星（头部光晕 + 渐变尾迹）；x/y 是头部当前坐标 */
+  _stroke(m, x, y, len, alpha) {
+    const { ctx } = this
+    const tailX = x - Math.cos(m.angle) * len
+    const tailY = y - Math.sin(m.angle) * len
+
+    const grad = ctx.createLinearGradient(x, y, tailX, tailY)
     grad.addColorStop(0, `hsla(${m.hue}, 100%, 96%, ${alpha})`)
     grad.addColorStop(0.18, `hsla(${m.hue}, 100%, 82%, ${alpha * 0.9})`)
     grad.addColorStop(0.55, `hsla(${m.hue}, 100%, 72%, ${alpha * 0.35})`)
@@ -244,17 +289,17 @@ export class MeteorField {
     ctx.lineWidth = m.width
     ctx.lineCap = 'round'
     ctx.beginPath()
-    ctx.moveTo(m.x, m.y)
+    ctx.moveTo(x, y)
     ctx.lineTo(tailX, tailY)
     ctx.stroke()
 
-    const glow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.width * 7)
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, m.width * 7)
     glow.addColorStop(0, `hsla(${m.hue}, 100%, 98%, ${alpha})`)
     glow.addColorStop(0.35, `hsla(${m.hue}, 100%, 85%, ${alpha * 0.45})`)
     glow.addColorStop(1, `hsla(${m.hue}, 100%, 80%, 0)`)
     ctx.fillStyle = glow
     ctx.beginPath()
-    ctx.arc(m.x, m.y, m.width * 7, 0, Math.PI * 2)
+    ctx.arc(x, y, m.width * 7, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
   }
@@ -272,10 +317,13 @@ export class MeteorField {
     this._updateTrails(dt)
     this._drawTrails(tSec)
 
+    // 密度靠「更短的补充间隔 + 更高的上限」顶住：移动端约 29 颗/s、上限 34 颗
+    const cap = this.mobile ? MOBILE.count : CFG.meteorCount
+    const gap = this.mobile ? MOBILE.spawn : CFG.spawnInterval
     this.spawnAcc += dt
-    if (this.spawnAcc >= CFG.spawnInterval) {
+    if (this.spawnAcc >= gap) {
       this.spawnAcc = 0
-      if (this.meteors.length < (this.mobile ? 22 : CFG.meteorCount)) {
+      if (this.meteors.length < cap) {
         const m = {}
         this._resetMeteor(m, false)
         this.meteors.push(m)
@@ -287,7 +335,7 @@ export class MeteorField {
       m.x += Math.cos(m.angle) * m.speed * dt
       m.y += Math.sin(m.angle) * m.speed * dt
       m.life -= dt
-      if (m.life <= 0 || m.x < -m.length * 2 || m.y > H + m.length * 2) {
+      if (m.life <= 0 || m.x < -m.length || m.y > H + m.length) {
         this.meteors.splice(i, 1)
       } else {
         this._drawMeteor(m)
@@ -298,7 +346,9 @@ export class MeteorField {
   }
 
   /** 兼容旧状态接口（验收脚本读 particles.length 作为粒子数）。 */
-  get particles() { return this.meteors }
+  get particles() {
+    return this.meteors
+  }
 
   start() {
     if (this.disposed || this.running) return

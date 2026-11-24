@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -13,11 +13,9 @@
 <div class="intro is-on" id="intro">
   <!-- ① 字符画眼睛（Canvas 2D，引擎逐字节取自 eyeTutorial 复刻包） -->
   <canvas class="intro-canvas" id="eyeCanvas" aria-hidden="true"></canvas>
-  <!-- ② 星空照片底图（花瓣段会淡出，只留深色底 + 流星） -->
-  <div class="intro-sky" id="introSky" aria-hidden="true"></div>
-  <!-- ③ 星轨 + 流星（Canvas 2D） -->
+  <!-- ② 星轨 + 流星（Canvas 2D，直接画在近黑底上；2026-11-23 删掉了星空照片底图层） -->
   <canvas class="intro-meteor" id="meteorCanvas" aria-hidden="true"></canvas>
-  <!-- ④ 花瓣 / 圣诞树（WebGL，透明清屏叠在上面） -->
+  <!-- ③ 花瓣 / 圣诞树（WebGL，透明清屏叠在上面） -->
   <canvas class="intro-particles" id="particleCanvas" aria-hidden="true"></canvas>
   <video class="intro-cam" id="cam" playsinline muted autoplay aria-hidden="true"></video>
 
