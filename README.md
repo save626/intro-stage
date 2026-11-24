@@ -55,8 +55,7 @@ src/
 │  ├─ gestures.js     统一手势状态（palm/fist/pinch/spread/fingers/pos/rot）
 │  ├─ tension.js      手掌张开度（含双手掌宽归一化）
 │  ├─ hand-tracker.js MediaPipe HandLandmarker（本地 wasm + 模型）
-│  ├─ overlay.js      21 点骨架叠加（本演示未使用，保留给扩展）
-│  ├─ meteors.js      粒子工程自带的流星层（本演示用 meteor.js，未启用）
+│  ├─ overlay.js      21 点骨架叠加（本演示未使用；bloom 与融合工程在用它，保留作扩展位）
 │  └─ sprites.js      共用光点贴图 + 缓动工具
 └─ scenes/
    ├─ index.js        场景注册表（flower / lights）
